@@ -98,6 +98,12 @@ function initDragAndDrop() {
                 window.showTaskModal(getTaskById(taskId));
             }
         });
+
+        // ✅ Открытие модалки по двойному клику
+        card.addEventListener('dblclick', () => {
+            const taskId = parseInt(card.dataset.taskId);
+            window.showTaskModal(getTaskById(taskId));
+        });
     });
     
     // События для колонок
@@ -126,6 +132,7 @@ function initDragAndDrop() {
         });
     });
 }
+
 
 // Инициализация кнопок добавления задач
 function initAddTaskButtons() {

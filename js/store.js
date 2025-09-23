@@ -122,7 +122,7 @@ export function addTask(taskData) {
         id: Date.now(), // Простой ID на основе времени
         title: taskData.title.trim(),
         description: taskData.description ? parseMarkdown(taskData.description.trim()) : '',
-        status: 'todo',
+        status: taskData.status || 'todo', // ✅ статус из кнопки, по умолчанию todo
         createdAt: new Date().toISOString()
     };
     
@@ -200,6 +200,7 @@ export function undo() {
     
     return true;
 }
+
 
 // Получение статуса истории
 export function getHistoryStatus() {

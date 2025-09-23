@@ -13,6 +13,7 @@ async function initApp() {
         // Инициализация роутера
         initRouter({
             onRouteChange: (route) => {
+                console.log('Route changed to:', route);
                 if (route.name === 'board') {
                     renderBoard();
                 } else if (route.name === 'task') {
@@ -20,6 +21,7 @@ async function initApp() {
                     if (task) {
                         window.showTaskModal(task);
                     } else {
+                        console.warn('Task not found, redirecting to board');
                         window.history.replaceState(null, '', '#/board');
                         renderBoard();
                     }
@@ -30,7 +32,8 @@ async function initApp() {
         // Инициализация модального окна
         initModal({
             onSave: (taskData, originalTask) => {
-                if (originalTask) {
+                console.log('Saving task:', taskData, 'Original task:', originalTask);
+                if (originalTask?.id) {
                     updateTask(originalTask.id, taskData);
                 } else {
                     addTask(taskData);
@@ -38,6 +41,7 @@ async function initApp() {
                 renderBoard();
             },
             onDelete: (taskId) => {
+                console.log('Deleting task ID:', taskId);
                 deleteTask(taskId);
                 renderBoard();
             }
@@ -53,22 +57,35 @@ async function initApp() {
         
         // Глобальные функции для модального окна
         window.showTaskModal = (task = null) => {
+            console.log('Calling showTaskModal with task:', task);
             const modal = document.getElementById('modal-overlay');
+            if (!modal) {
+                console.error('modal-overlay not found');
+                return;
+            }
             const event = new CustomEvent('showModal', { detail: { task } });
             modal.dispatchEvent(event);
         };
         
         window.hideTaskModal = () => {
+            console.log('Calling hideTaskModal');
             const modal = document.getElementById('modal-overlay');
+            if (!modal) {
+                console.error('modal-overlay not found');
+                return;
+            }
             const event = new CustomEvent('hideModal');
             modal.dispatchEvent(event);
         };
         
         // Обработчик отмены действий
-        document.getElementById('undo-btn').addEventListener('click', () => {
-            undo();
-            renderBoard();
-        });
+        const undoBtn = document.getElementById('undo-btn');
+        if (undoBtn) {
+            undoBtn.addEventListener('click', () => {
+                undo();
+                renderBoard();
+            });
+        }
         
         // Глобальное сочетание клавиш для отмены
         document.addEventListener('keydown', (e) => {
@@ -79,8 +96,19 @@ async function initApp() {
             }
         });
         
-        // Первоначальный рендеринг доски
-        renderBoard();
+        // Проверяем текущий маршрут, чтобы избежать автоматического открытия модального окна
+        if (window.location.hash.startsWith('#/task/')) {
+            const taskId = parseInt(window.location.hash.split('/')[2]);
+            const task = getTaskById(taskId);
+            if (task) {
+                window.showTaskModal(task);
+            } else {
+                window.history.replaceState(null, '', '#/board');
+                renderBoard();
+            }
+        } else {
+            renderBoard();
+        }
         
     } catch (error) {
         console.error('Ошибка инициализации приложения:', error);
