@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Канбан-доска</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div id="app">
+        <header class="header">
+            <h1>Канбан-доска</h1>
+            <div class="controls">
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Поиск по названию..." aria-label="Поиск задач">
+                    <button id="filter-toggle" aria-pressed="false">Только с описанием</button>
+                </div>
+                <button id="undo-btn" title="Отменить последнее действие (Ctrl+Z)">Отменить</button>
+            </div>
+        </header>
+        
+        <main id="main-content">
+            <!-- Содержимое будет рендериться JavaScript -->
+        </main>
+    </div>
+
+    <!-- Модальное окно для редактирования задачи -->
+    <div id="modal-overlay" class="modal-overlay" hidden>
+        <div class="modal" role="dialog" aria-labelledby="modal-title" aria-modal="true">
+            <div class="modal-header">
+                <h2 id="modal-title">Редактирование задачи</h2>
+                <button id="modal-close" class="close-btn" aria-label="Закрыть">×</button>
+            </div>
+            <form id="task-form" class="modal-form">
+                <div class="form-group">
+                    <label for="task-title">Название *</label>
+                    <input type="text" id="task-title" required aria-required="true">
+                </div>
+                <div class="form-group">
+                    <label for="task-description">Описание</label>
+                    <textarea id="task-description" placeholder="Поддерживается разметка: **жирный**, _курсив_, `код`"></textarea>
+                    <div class="preview-label">Предпросмотр:</div>
+                    <div id="description-preview" class="preview"></div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="delete-btn" class="btn-danger">Удалить</button>
+                    <div>
+                        <button type="button" id="cancel-btn">Отмена</button>
+                        <button type="submit" id="save-btn">Сохранить</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
