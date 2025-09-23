@@ -1,8 +1,12 @@
 import { parseMarkdown } from '../utils/sanitize.js';
 
-// Инициализация модального окна
 export function initModal(config) {
     const modalOverlay = document.getElementById('modal-overlay');
+    if (!modalOverlay) {
+        console.error('modal-overlay element not found');
+        return { show: () => {}, hide: () => {} };
+    }
+
     const modal = modalOverlay.querySelector('.modal');
     const closeBtn = document.getElementById('modal-close');
     const cancelBtn = document.getElementById('cancel-btn');
@@ -12,65 +16,67 @@ export function initModal(config) {
     const descriptionInput = document.getElementById('task-description');
     const previewElement = document.getElementById('description-preview');
     
+    if (!modal || !closeBtn || !cancelBtn || !deleteBtn || !form || !titleInput || !descriptionInput || !previewElement) {
+        console.error('One or more modal elements not found');
+        return { show: () => {}, hide: () => {} };
+    }
+    
     let currentTask = null;
     let previousActiveElement = null;
+    let removeTrapFocus = null;
     
-    // Показать модальное окно
     function showModal(task = null) {
+        console.log('Showing modal with task:', task);
         currentTask = task;
         previousActiveElement = document.activeElement;
         
         // Заполнение формы
-        if (task) {
-            titleInput.value = task.title;
-            descriptionInput.value = getRawDescription(task.description);
-            deleteBtn.style.display = 'block';
-            document.getElementById('modal-title').textContent = 'Редактирование задачи';
-        } else {
-            titleInput.value = '';
-            descriptionInput.value = '';
-            deleteBtn.style.display = 'none';
-            document.getElementById('modal-title').textContent = 'Новая задача';
-        }
+        titleInput.value = task?.title || '';
+        descriptionInput.value = task ? getRawDescription(task.description) : '';
+        deleteBtn.style.display = task ? 'block' : 'none';
+        document.getElementById('modal-title').textContent = task ? 'Редактирование задачи' : 'Новая задача';
         
         updatePreview();
         
-        // Показать модальное окно
         modalOverlay.hidden = false;
+        modalOverlay.style.display = 'block';
         document.body.style.overflow = 'hidden';
         
-        // Фокус на первом поле ввода
         setTimeout(() => {
             titleInput.focus();
         }, 100);
         
-        // Ловушка фокуса
-        trapFocus(modal);
+        if (removeTrapFocus) {
+            removeTrapFocus();
+        }
+        removeTrapFocus = trapFocus(modal);
     }
     
-    // Скрыть модальное окно
     function hideModal() {
+        console.log('Hiding modal');
         modalOverlay.hidden = true;
+        modalOverlay.style.display = 'none';
         document.body.style.overflow = '';
         
-        // Вернуть фокус на предыдущий элемент
+        if (removeTrapFocus) {
+            removeTrapFocus();
+            removeTrapFocus = null;
+        }
+        
         if (previousActiveElement) {
+            console.log('Restoring focus to:', previousActiveElement);
             previousActiveElement.focus();
         }
     }
     
-    // Обновление предпросмотра разметки
     function updatePreview() {
         previewElement.innerHTML = descriptionInput.value ? 
             parseMarkdown(descriptionInput.value) : 
             '<em>Введите текст для предпросмотра...</em>';
     }
     
-    // Получение сырого описания (обратное преобразование)
     function getRawDescription(html) {
         if (!html) return '';
-        
-        // Простое обратное преобразование (для демонстрации)
         return html
             .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
             .replace(/<em>(.*?)<\/em>/g, '_$1_')
@@ -79,42 +85,44 @@ export function initModal(config) {
             .replace(/<\/?[^>]+(>|$)/g, '');
     }
     
-    // Ловушка фокуса в модальном окне
     function trapFocus(element) {
         const focusableElements = element.querySelectorAll(
             'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         );
+        if (focusableElements.length === 0) {
+            console.warn('No focusable elements found in modal');
+            return () => {};
+        }
+        
         const firstElement = focusableElements[0];
         const lastElement = focusableElements[focusableElements.length - 1];
         
         function handleTabKey(e) {
-            if (e.key !== 'Tab') return;
-            
-            if (e.shiftKey) {
-                if (document.activeElement === firstElement) {
-                    e.preventDefault();
-                    lastElement.focus();
-                }
-            } else {
-                if (document.activeElement === lastElement) {
-                    e.preventDefault();
-                    firstElement.focus();
+            if (e.key === 'Tab') {
+                if (e.shiftKey) {
+                    if (document.activeElement === firstElement) {
+                        e.preventDefault();
+                        lastElement.focus();
+                    }
+                } else {
+                    if (document.activeElement === lastElement) {
+                        e.preventDefault();
+                        firstElement.focus();
+                    }
                 }
             }
         }
         
         element.addEventListener('keydown', handleTabKey);
-        
-        // Очистка обработчика при закрытии модалки
         return () => element.removeEventListener('keydown', handleTabKey);
     }
     
-    // Обработчики событий
     function handleFormSubmit(e) {
         e.preventDefault();
-        
+        console.log('Form submitted');
         const title = titleInput.value.trim();
         if (!title) {
+            console.log('Title is empty, showing alert');
             alert('Название задачи обязательно');
             titleInput.focus();
             return;
@@ -126,8 +134,11 @@ export function initModal(config) {
             status: currentTask ? currentTask.status : 'todo'
         };
         
-        if (config.onSave) {
+        console.log('Saving task:', taskData, 'Original task:', currentTask);
+        if (config?.onSave) {
             config.onSave(taskData, currentTask);
+        } else {
+            console.error('config.onSave is not defined');
         }
         
         hideModal();
@@ -135,8 +146,11 @@ export function initModal(config) {
     
     function handleDelete() {
         if (currentTask && confirm('Вы уверены, что хотите удалить эту задачу?')) {
-            if (config.onDelete) {
+            console.log('Deleting task:', currentTask.id);
+            if (config?.onDelete) {
                 config.onDelete(currentTask.id);
+            } else {
+                console.error('config.onDelete is not defined');
             }
             hideModal();
         }
@@ -144,37 +158,53 @@ export function initModal(config) {
     
     function handleEscape(e) {
         if (e.key === 'Escape') {
+            console.log('Escape key pressed');
             hideModal();
         }
     }
     
     function handleOverlayClick(e) {
         if (e.target === modalOverlay) {
+            console.log('Overlay clicked');
             hideModal();
         }
     }
     
+    // Очистка обработчиков
+    form.removeEventListener('submit', handleFormSubmit);
+    closeBtn.removeEventListener('click', hideModal);
+    cancelBtn.removeEventListener('click', hideModal);
+    deleteBtn.removeEventListener('click', handleDelete);
+    modalOverlay.removeEventListener('keydown', handleEscape);
+    modalOverlay.removeEventListener('click', handleOverlayClick);
+    descriptionInput.removeEventListener('input', updatePreview);
+    modalOverlay.removeEventListener('showModal', showModal);
+    modalOverlay.removeEventListener('hideModal', hideModal);
+    
     // Назначение обработчиков
     form.addEventListener('submit', handleFormSubmit);
-    closeBtn.addEventListener('click', hideModal);
-    cancelBtn.addEventListener('click', hideModal);
+    closeBtn.addEventListener('click', () => {
+        console.log('Close button clicked');
+        hideModal();
+    });
+    cancelBtn.addEventListener('click', () => {
+        console.log('Cancel button clicked');
+        hideModal();
+    });
     deleteBtn.addEventListener('click', handleDelete);
     modalOverlay.addEventListener('keydown', handleEscape);
     modalOverlay.addEventListener('click', handleOverlayClick);
-    
-    // Обновление предпросмотра при вводе
     descriptionInput.addEventListener('input', updatePreview);
     
-    // Публичные методы
     modalOverlay.showModal = showModal;
     modalOverlay.hideModal = hideModal;
     
-    // Обработчик кастомных событий
     modalOverlay.addEventListener('showModal', (e) => {
-        showModal(e.detail.task);
+        console.log('Custom showModal event triggered');
+        showModal(e.detail?.task);
     });
-    
     modalOverlay.addEventListener('hideModal', () => {
+        console.log('Custom hideModal event triggered');
         hideModal();
     });
     
